@@ -1,0 +1,55 @@
+# .intent/enforcement/mappings/architecture/intent_access.yaml
+#
+# Enforces canonical access to .intent governance memory.
+#
+# Rule ID renamed under #490 (ADR-077 cleanup):
+#   old: architecture.intent.non_gateway_no_direct_resolution
+#   new: architecture.namespace.no_direct_protected_access
+# The check_type was renamed simultaneously from `direct_intent_access`
+# to `protected_namespace_access`. The check still hardcodes `.intent/`
+# semantics; promoting markers/gateway to rule-supplied parameters is
+# follow-up generalisation work tracked separately.
+
+mappings:
+  architecture.namespace.no_direct_protected_access:
+    engine: ast_gate
+    params:
+      check_type: protected_namespace_access
+    scope:
+      applies_to:
+        - "src/**/*.py"
+      excludes:
+        - "src/shared/infrastructure/intent/**"
+        - "src/body/project_lifecycle/scaffolding_service.py"
+        - "src/body/services/intent_schema_validator.py"
+        - "src/mind/governance/meta_validator.py"
+        - "src/cli/commands/daemon.py"
+        - "src/will/workers/worker_shop_manager.py"
+        - "tests/**/*.py"
+
+  # ADVISORY DECLARATIONS — architectural guidance, not engine-checkable.
+  # These rules describe how .intent/ should be structured and accessed.
+  # They are constitutionally binding guidance for human architects.
+
+  architecture.intent.gateway_is_shared_infrastructure:
+    engine: advisory
+    params:
+      note: >
+        Architectural guidance. The .intent/ gateway is shared infrastructure
+        owned by no single layer. All layers access .intent/ through the
+        canonical gateway, never by direct path construction. Enforced by
+        architectural review and PathResolver usage convention.
+    scope:
+      applies_to:
+        - "src/**/*.py"
+
+  architecture.intent.no_legacy_root_assumptions:
+    engine: advisory
+    params:
+      note: >
+        Architectural guidance. No code may assume .intent/ lives at the
+        repository root via hardcoded relative paths. All .intent/ access
+        must use PathResolver. Enforced by convention and code review.
+    scope:
+      applies_to:
+        - "src/**/*.py"

@@ -1,0 +1,403 @@
+# .intent/enforcement/mappings/data/governance.yaml
+mappings:
+  # LAW: Operational knowledge MUST NOT be hardcoded
+  data.ssot.database_primacy:
+    engine: ast_gate
+    params:
+      check_type: forbidden_assignments
+      targets: [ "LLM_MODELS", "AGENT_ROLES", "SYSTEM_DOMAINS" ]
+    scope:
+      applies_to:
+        - "src/**/*.py"
+      excludes:
+        - "tests/**"
+        - "src/**/test_*.py"
+
+  # LAW: Source code, logs, and prompts MUST NOT contain raw secrets
+  data.security.no_raw_secrets:
+    engine: regex_gate
+    params:
+      forbidden_patterns:
+        - "(sk-[a-zA-Z0-9]{32,})"
+        - "AI[a-zA-Z0-9]{32,}"
+        - "PASSWORD\\s*=\\s*['\"][^'\"]+['\"]"
+        - "ghp_[a-zA-Z0-9]{36}"
+        - "ghs_[a-zA-Z0-9]{36}"
+        - "gho_[a-zA-Z0-9]{36}"
+        - "ghu_[a-zA-Z0-9]{36}"
+        - "github_pat_[a-zA-Z0-9_]{22,}"
+        - "xox[bapr]-[0-9]+-[0-9]+-[a-zA-Z0-9]+"
+        - "AKIA[0-9A-Z]{16}"
+        - "ASIA[0-9A-Z]{16}"
+        - "-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----"
+        - "(?i)(password|api_key|secret_key)\\s*=\\s*['\"][^'\"]{8,}['\"]"
+    scope:
+      applies_to: [ "src/**/*.py", "var/logs/*.jsonl" ]
+
+  # LAW: Every symbol in DB must have a vector in memory
+  data.integrity.vector_sync:
+    engine: knowledge_gate
+    params:
+      check_type: table_has_records
+      table: "core.symbol_vector_links"
+    scope:
+      applies_to:
+        - "src/**/*.py"
+
+  # ── Wave 1 ─────────────────────────────────────────────────────────────────
+
+  data.contracts.finding_nucleus_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: Finding
+    scope:
+      applies_to:
+        - "src/body/services/cim/models.py"
+        - "src/shared/models/audit_models.py"
+
+  data.contracts.proposal_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: Proposal
+    scope:
+      applies_to:
+        - "src/will/autonomy/proposal.py"
+
+  data.contracts.proposal_scope_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: ProposalScope
+    scope:
+      applies_to:
+        - "src/will/autonomy/proposal.py"
+
+  data.contracts.proposal_action_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: ProposalAction
+    scope:
+      applies_to:
+        - "src/will/autonomy/proposal.py"
+
+  data.contracts.risk_assessment_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: RiskAssessment
+    scope:
+      applies_to:
+        - "src/will/autonomy/proposal.py"
+
+  data.contracts.action_result_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: ActionResult
+    scope:
+      applies_to:
+        - "src/shared/action_types.py"
+
+  data.contracts.refusal_result_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: RefusalResult
+    scope:
+      applies_to:
+        - "src/shared/models/refusal_result.py"
+
+  data.contracts.check_result_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: CheckResult
+    scope:
+      applies_to:
+        - "src/body/services/cim/models.py"
+
+  data.contracts.audit_finding_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: AuditFinding
+    scope:
+      applies_to:
+        - "src/shared/models/audit_models.py"
+
+  data.contracts.blackboard_entry_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: BlackboardEntry
+    scope:
+      applies_to:
+        - "src/shared/infrastructure/database/models/workers.py"
+
+  data.contracts.violation_report_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: ViolationReport
+    scope:
+      applies_to:
+        - "src/mind/governance/violation_report.py"
+
+  data.contracts.constitutional_violation_payload_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: ConstitutionalViolationPayload
+    scope:
+      applies_to:
+        - "src/mind/governance/violation_report.py"
+
+  data.contracts.worker_declaration_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: WorkerDeclaration
+    scope:
+      applies_to:
+        - "src/shared/workers/base.py"
+
+  data.contracts.constitutional_validation_result_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: ConstitutionalValidationResult
+    scope:
+      applies_to:
+        - "src/shared/models/constitutional_validation.py"
+
+  data.contracts.prompt_model_manifest_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: PromptModelManifest
+    scope:
+      applies_to:
+        - "src/shared/models/prompt_model.py"
+
+  data.contracts.context_build_request_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: ContextBuildRequest
+    scope:
+      applies_to:
+        - "src/shared/infrastructure/context/models.py"
+
+  data.contracts.context_packet_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: ContextPacket
+    scope:
+      applies_to:
+        - "src/shared/infrastructure/context/models.py"
+
+  data.contracts.embedding_payload_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: EmbeddingPayload
+    scope:
+      applies_to:
+        - "src/shared/models/embedding_payload.py"
+
+  # ── Wave 2 Session 1 ───────────────────────────────────────────────────────
+
+  data.contracts.governance_decision_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: GovernanceDecision
+    scope:
+      applies_to:
+        - "src/body/services/constitutional_validator.py"
+
+  data.contracts.action_definition_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: ActionDefinition
+    scope:
+      applies_to:
+        - "src/body/atomic/registry.py"
+
+  data.contracts.execution_task_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: ExecutionTask
+    scope:
+      applies_to:
+        - "src/shared/models/execution_models.py"
+
+  data.contracts.task_structure_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: TaskStructure
+    scope:
+      applies_to:
+        - "src/will/interpreters/request_interpreter.py"
+
+  data.contracts.flow_definition_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: FlowDefinition
+    scope:
+      applies_to:
+        - "src/body/flows/registry.py"
+
+  data.contracts.flow_step_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: FlowStep
+    scope:
+      applies_to:
+        - "src/body/flows/registry.py"
+
+  # ── Wave 2 Session 2 ───────────────────────────────────────────────────────
+
+  data.contracts.remediation_result_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: RemediationResult
+    scope:
+      applies_to:
+        - "src/body/self_healing/remediation_models.py"
+
+  data.contracts.fix_result_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: FixResult
+    scope:
+      applies_to:
+        - "src/body/self_healing/remediation_models.py"
+
+  data.contracts.auto_fixable_pattern_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: AutoFixablePattern
+    scope:
+      applies_to:
+        - "src/shared/models/remediation.py"
+
+  data.contracts.pattern_violation_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: PatternViolation
+    scope:
+      applies_to:
+        - "src/shared/models/pattern_graph.py"
+
+  data.contracts.validation_result_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: ValidationResult
+    scope:
+      applies_to:
+        - "src/shared/models/validation_result.py"
+
+  # ── Wave 3 Session 1 — Workflow, vector, observability ─────────────────────
+
+  # WorkflowResult and PhaseWorkflowResult both live in workflow_models.py.
+  # Legacy and constitutional shapes coexist; both governed separately.
+  data.contracts.workflow_result_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: WorkflowResult
+    scope:
+      applies_to:
+        - "src/shared/models/workflow_models.py"
+
+  data.contracts.phase_workflow_result_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: PhaseWorkflowResult
+    scope:
+      applies_to:
+        - "src/shared/models/workflow_models.py"
+
+  # DetailedPlanStep and DetailedPlan both live in workflow_models.py.
+  data.contracts.detailed_plan_step_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: DetailedPlanStep
+    scope:
+      applies_to:
+        - "src/shared/models/workflow_models.py"
+
+  data.contracts.detailed_plan_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: DetailedPlan
+    scope:
+      applies_to:
+        - "src/shared/models/workflow_models.py"
+
+  data.contracts.vectorizable_item_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: VectorizableItem
+    scope:
+      applies_to:
+        - "src/shared/models/vector_models.py"
+
+  data.contracts.drift_report_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: DriftReport
+    scope:
+      applies_to:
+        - "src/shared/models/drift_models.py"
+
+  # AgentDecision: ORM class. __tablename__ and __table_args__ ClassVar annotations
+  # are in contract properties to suppress false positives (issue #368).
+  data.contracts.agent_decision_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: AgentDecision
+    scope:
+      applies_to:
+        - "src/shared/infrastructure/database/models/learning.py"
+
+  # PolicyEvaluation and RepoCensus both live in cim/models.py.
+  # CheckResult and finding_nucleus_conforms also point to this file.
+  data.contracts.policy_evaluation_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: PolicyEvaluation
+    scope:
+      applies_to:
+        - "src/body/services/cim/models.py"
+
+  data.contracts.repo_census_conforms:
+    engine: ast_gate
+    params:
+      check_type: schema_conformance
+      schema_ref: RepoCensus
+    scope:
+      applies_to:
+        - "src/body/services/cim/models.py"

@@ -1,0 +1,58 @@
+$schema: "META/worker.schema.json"
+kind: worker
+
+metadata:
+  id: workers.repo_crawler
+  title: Repo Crawler
+  version: "1.0.0"
+  authority: policy
+  status: active
+  rationale: >
+    Structural-self-model producer per ADR-018 D4: populates
+    core.repo_artifacts, core.symbol_calls, and
+    core.artifact_symbol_links; sets repo_artifacts.chunk_count = 0 on
+    content_hash change as the work-queue signal for RepoEmbedderWorker.
+    Replaces vector_sync_worker (deprecated under ADR-018 D1).
+
+    Under ADR-070 D8 (2026-05-24) also declared writer-as-sensor for
+    the `repo_artifacts ↔ filesystem` projection pair (see
+    .intent/governance/projections.yaml). The walk's reap step posts
+    `coherence.repo_artifacts.drift` findings inline (no proposal
+    pipeline) when rows are removed.
+
+identity:
+  uuid: "f1a2b3c4-d5e6-7890-abcd-ef1234567891"
+  class: sensing
+
+mandate:
+  responsibility: >
+    Walk the CORE repository and build the structural self-model:
+    extract AST call graph edges into core.symbol_calls,
+    register all non-Python artifacts into core.repo_artifacts,
+    and cross-reference artifacts to symbols in core.artifact_symbol_links.
+    Skips unchanged files via SHA256 content hash. Never follows symlinks.
+    Does not embed — embedding is delegated to RepoEmbedderWorker.
+  phase: audit
+  permitted_tools:
+    - file.read
+  scope:
+    paths:
+      - "src/**"
+      - "docs/**"
+      - "tests/**"
+      - "var/prompts/**"
+      - "reports/**"
+      - ".intent/**"
+      - ".specs/**"
+      - "infra/**"
+    domains:
+      - knowledge
+      - governance
+  approval_required: false
+  schedule:
+    max_interval: 1200
+
+implementation:
+  module: will.workers.repo_crawler
+  class: RepoCrawlerWorker
+  requires_core_context: false

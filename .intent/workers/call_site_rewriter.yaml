@@ -1,0 +1,47 @@
+$schema: "META/worker.schema.json"
+kind: worker
+
+metadata:
+  id: workers.call_site_rewriter
+  title: Call Site Rewriter
+  version: "0.1.0"
+  authority: policy
+  status: paused
+  rationale: >
+    Tail of the prompt governance remediation pipeline:
+    audit_ingest_worker → prompt_extractor_worker → prompt_artifact_writer → call_site_rewriter.
+    Claims prompt.artifact findings and rewrites call sites via full Crate/Canary
+    ceremony. Paused pending activation of the make_request_async() →
+    PromptModel.invoke() migration campaign. Implementation is complete;
+    approval_required: true ensures human sign-off before any src/ writes.
+
+identity:
+  uuid: "d4e5f6a7-b8c9-0123-defa-234567890123"
+  class: acting
+
+mandate:
+  responsibility: >
+    For each file with open prompt.artifact findings on the blackboard,
+    rewrites the source file to replace direct make_request_async() calls
+    with governed PromptModel.invoke() calls. Full ceremony: git checkpoint,
+    rollback archive, LLM rewrite, Crate, Canary validation, apply, git commit.
+  phase: execution
+  permitted_tools:
+    - llm.architect
+    - file.read
+    - crate.create
+    - canary.validate
+    - crate.apply
+    - git.commit
+  scope:
+    paths:
+      - "src/**"
+      - "var/mind/rollbacks/**"
+    domains:
+      - compliance
+  approval_required: true
+
+implementation:
+  module: body.workers.call_site_rewriter
+  class: CallSiteRewriter
+  requires_core_context: true

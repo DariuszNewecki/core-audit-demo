@@ -1,0 +1,90 @@
+{
+    "$schema": "META/rule_document.schema.json",
+    "kind": "rule_document",
+    "metadata": {
+        "id": "rules.code.purity",
+        "title": "Code Purity Standards (V2.3 Reflexive)",
+        "version": "1.2.0",
+        "authority": "policy",
+        "phase": "audit",
+        "status": "active"
+    },
+    "rules": [
+        {
+            "id": "purity.no_metadata_decorators",
+            "statement": "Source code MUST NOT contain descriptive metadata decorators like @capability, @meta, or @owner.",
+            "authority": "policy",
+            "phase": "audit",
+            "enforcement": "blocking"
+        },
+        {
+            "id": "purity.no_todo_placeholders",
+            "statement": "Production code MUST NOT contain 'TODO', 'FIXME', or 'TBD' strings; use the constitutional 'FUTURE' or 'PENDING' markers.",
+            "authority": "policy",
+            "phase": "audit",
+            "enforcement": "reporting"
+        },
+        {
+            "id": "purity.stable_id_anchor",
+            "statement": "Every public symbol MUST be preceded by a stable '# ID:' anchor comment.",
+            "authority": "policy",
+            "phase": "audit",
+            "enforcement": "reporting",
+            "rationale": "Downgraded to reporting to support autonomous refactoring loops. Missing IDs are auto-injected by the ActionExecutor Finalizer."
+        },
+        {
+            "id": "purity.docstrings.required",
+            "statement": "Public symbols MUST have docstrings that clarify intent and parameters for autonomous planning.",
+            "authority": "policy",
+            "phase": "audit",
+            "enforcement": "reporting"
+        },
+        {
+            "id": "purity.no_ast_duplication",
+            "statement": "Code MUST NOT contain exact AST duplicates (identical normalized syntax trees).",
+            "authority": "policy",
+            "phase": "audit",
+            "enforcement": "reporting",
+            "rationale": "Exact duplicates indicate DRY violations and increase maintenance burden."
+        },
+        {
+            "id": "purity.no_semantic_duplication",
+            "statement": "Code SHOULD NOT contain semantic duplicates (functionally similar implementations).",
+            "authority": "policy",
+            "phase": "audit",
+            "enforcement": "reporting",
+            "rationale": "Semantic duplicates suggest opportunities for consolidation and abstraction."
+        },
+        {
+            "id": "purity.logic_conservation",
+            "statement": "Refactored code MUST NOT result in a character count reduction of >50% compared to original source unless explicitly authorized.",
+            "authority": "constitution",
+            "phase": "audit",
+            "enforcement": "reporting",
+            "rationale": "Pillar III: Functional Governance. Prevents 'Logic Evaporation' where AI deletes complex code to pass simple tests. Downgraded to reporting because LLM gates should not be blocking authorities."
+        },
+        {
+            "id": "purity.no_dead_code",
+            "statement": "Production code MUST NOT contain unreachable or dead symbols as identified by static analysis.",
+            "authority": "policy",
+            "phase": "audit",
+            "enforcement": "reporting"
+        },
+        {
+            "id": "purity.no_orphan_files",
+            "statement": "Production source files MUST be reachable from at least one declared entry point via the import graph. Files that no entry point can reach are orphans and MUST be removed or integrated.",
+            "authority": "policy",
+            "phase": "audit",
+            "enforcement": "reporting",
+            "rationale": "vulture detects unused symbols within files but cannot detect unreachable files. This rule closes that gap via import graph traversal from declared entry points."
+        },
+        {
+            "id": "purity.tempfile_default_dir",
+            "statement": "Calls to tempfile.TemporaryDirectory, tempfile.NamedTemporaryFile, tempfile.mkdtemp, tempfile.mkstemp MUST pass an explicit dir= keyword argument pointing under repo_root/var/tmp/. tempfile.gettempdir() MUST NOT be called.",
+            "authority": "policy",
+            "phase": "audit",
+            "enforcement": "blocking",
+            "rationale": "Without dir=, tempfile resolves to the system temp dir (/tmp/ on Linux), which CLAUDE.md's dev-side contract prohibits. The detection asymmetry — dev contract on Claude Code output but no audit rule against the codebase — let four such sites accumulate undetected; closed by #508 + this rule."
+        }
+    ]
+}

@@ -1,0 +1,93 @@
+# .intent/enforcement/mappings/code/metadata_mutations.yaml
+#
+# Enforcement mappings for metadata mutation governance.
+# Based on: .intent/rules/code/metadata_mutations.json
+#
+# CONSTITUTIONAL NOTE: WRITE_METADATA actions bypass governance.logic_mutation.governed
+# because they are governed by a stricter, proof-based invariant:
+# the normalized AST must be identical before and after.
+#
+# Rules below marked engine: advisory are permissive declarations — they
+# authorize WRITE_METADATA actions, they do not detect violations.
+# Mapped here explicitly to remove them from the declared_only count.
+
+mappings:
+  # LAW: Executable semantics must be preserved across metadata mutations
+  # Check type: ast_gate (Normalized AST comparison before/after)
+  metadata.semantic_preservation:
+    engine: ast_gate
+    params:
+      check_type: metadata_only_diff
+    scope:
+      applies_to:
+        - "src/**/*.py"
+      excludes:
+        - "**/__init__.py"
+        - "tests/**/*.py"
+
+  # ===========================================================================
+  # ADVISORY DECLARATIONS
+  # Permissive rules — they grant permission, not restrict.
+  # No automated check is possible or needed.
+  # ===========================================================================
+
+  metadata.operations.comment_insert:
+    engine: advisory
+    params:
+      note: >
+        Permissive declaration. WRITE_METADATA actions MAY insert comment lines.
+        Enforced at action-layer by convention, not by engine.
+    scope:
+      applies_to:
+        - "src/**/*.py"
+
+  metadata.operations.comment_replace:
+    engine: advisory
+    params:
+      note: >
+        Permissive declaration. WRITE_METADATA actions MAY replace comment lines.
+        Enforced at action-layer by convention, not by engine.
+    scope:
+      applies_to:
+        - "src/**/*.py"
+
+  metadata.operations.comment_delete:
+    engine: advisory
+    params:
+      note: >
+        Permissive declaration. WRITE_METADATA actions MAY delete comment lines.
+        Enforced at action-layer by convention, not by engine.
+    scope:
+      applies_to:
+        - "src/**/*.py"
+
+  metadata.operations.docstring_insert:
+    engine: advisory
+    params:
+      note: >
+        Permissive declaration. WRITE_METADATA actions MAY insert docstrings.
+        Enforced at action-layer by convention, not by engine.
+    scope:
+      applies_to:
+        - "src/**/*.py"
+
+  metadata.operations.docstring_replace:
+    engine: advisory
+    params:
+      note: >
+        Permissive declaration. WRITE_METADATA actions MAY replace docstrings.
+        Enforced at action-layer by convention, not by engine.
+    scope:
+      applies_to:
+        - "src/**/*.py"
+
+  metadata.scope.universal:
+    engine: advisory
+    params:
+      note: >
+        Constitutional declaration. WRITE_METADATA is permitted on all
+        src/**/*.py without exclusion. Grants universal scope; no violation
+        detection needed.
+    scope:
+      applies_to:
+        - "src/**/*.py"

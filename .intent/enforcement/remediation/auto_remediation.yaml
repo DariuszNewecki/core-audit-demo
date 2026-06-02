@@ -1,0 +1,1210 @@
+# .intent/enforcement/remediation/auto_remediation.yaml
+#
+# Constitutional Remediation Map
+# Authority: policy
+# Phase: audit
+# Status: active
+#
+# PURPOSE:
+#   Maps audit check_ids to autonomous fix handlers.
+#   Consumed by: body/autonomy/audit_analyzer.py (AuditAnalyzer)
+#                will/workers/violation_remediator.py (ViolationRemediatorWorker)
+#
+# CONFIDENCE TIERS:
+#   >= 0.90  → safe_only mode (deterministic, zero reasoning required)
+#   >= 0.70  → medium_risk mode (deterministic with light validation)
+#   >= 0.50  → all_deterministic mode (requires handler to be confirmed working)
+#   < 0.50   → NOT dispatched; handler stub must be implemented first
+#
+# RISK LEVELS:
+#   low    → single-file, deterministic, fully reversible
+#   medium → multi-step, deterministic but affects logic flow
+#   high   → structural changes, requires LLM or A3 loop
+#
+# HANDLER STATUS KEY:
+#   ACTIVE   → action confirmed in atomic action registry
+#   DELEGATE → non-automatable; ViolationRemediatorWorker routes to governor
+#              inbox as an indeterminate finding requiring human decision.
+#              Confidence set below MIN_CONFIDENCE (0.80); included in the
+#              active map so ViolationExecutorWorker cannot claim it as unmapped.
+#   PENDING  → action does not yet exist in registry; confidence set below
+#              MIN_CONFIDENCE (0.80) to prevent dispatch until implemented.
+#              Excluded from the active map entirely (loader skips PENDING).
+#
+# NOTE ON MIN_CONFIDENCE:
+#   ViolationRemediatorWorker uses this map directly.
+#   Only entries >= 0.80 will produce proposals.
+#   DELEGATE entries are routed to the governor inbox, not proposals.
+#   PENDING entries are documented for roadmap visibility only.
+#
+# FLOW ENTRIES:
+#   Entries may use 'flow' instead of 'action' to dispatch through FlowExecutor.
+#   Flow-based proposals always have approval_required=True (compute_risk()
+#   classifies flows as "moderate"). Human approval is required before execution.
+#
+# ACTION IDs MUST match exactly what is registered in body/atomic/.
+# Registered actions (as of 2026-04-05):
+#   fix.atomic_actions, fix.docstrings, fix.duplicate_ids, fix.format,
+#   fix.headers, fix.ids, fix.imports, fix.logging, fix.modularity,
+#   fix.placeholders
+#
+# FLOW IDs MUST match exactly what is registered in body/flows/registry.
+# Registered flows (as of 2026-05-05):
+#   flow.build_tests, flow.fix_code, flow.dev_sync, flow.sync_state
+
+mappings:
+  # ===========================================================================
+  # TIER 1: ACTIVE — safe_only (confidence >= 0.90)
+  # Deterministic, fully reversible, no reasoning required.
+  # ===========================================================================
+
+  style.import_order:
+    action: fix.imports
+    confidence: 0.92
+    risk: low
+    description: >
+      Sort imports in a single file using ruff (isort-compatible).
+    status: ACTIVE
+
+  linkage.duplicate_ids:
+    action: fix.duplicate_ids
+    confidence: 0.90
+    risk: low
+    description: >
+      Regenerate fresh UUIDs for any duplicate # ID: comment tags. Safe: only
+      rewrites comment lines, never touches logic.
+    status: ACTIVE
+
+  purity.no_todo_placeholders:
+    action: fix.placeholders
+    confidence: 0.92
+    risk: low
+    description: >
+      Replace forbidden placeholder strings (TODO, FIXME, TBD, etc.).
+      Deterministic regex — no reasoning required.
+    status: ACTIVE
+
+  linkage.assign_ids:
+    action: fix.ids
+    confidence: 0.91
+    risk: low
+    description: >
+      Insert # ID: UUID comment above public functions and methods that lack
+      one. Pure AST, no LLM, fully deterministic.
+    status: ACTIVE
+
+  logic.logging.standard_only:
+    action: fix.logging
+    confidence: 0.92
+    risk: low
+    description: >
+      Replace print() and console.print() with logger calls. Deterministic AST
+      transformation, no reasoning required.
+    status: ACTIVE
+
+  architecture.channels.logic_no_terminal_rendering:
+    action: fix.logging
+    confidence: 0.90
+    risk: low
+    description: >
+      Terminal rendering (Rich, print) in logic layer must be replaced with
+      logger calls. Deterministic AST fix.
+    status: ACTIVE
+
+  purity.stable_id_anchor:
+    action: fix.ids
+    confidence: 0.91
+    risk: low
+    description: >
+      Insert missing stable ID anchors on public symbols.
+    status: ACTIVE
+
+  layout.src_module_header:
+    action: fix.headers
+    confidence: 0.91
+    risk: low
+    description: >
+      Add or correct module header comments in src/ files.
+    status: ACTIVE
+
+  style.formatter_required:
+    action: fix.format
+    confidence: 0.92
+    risk: low
+    description: >
+      Format file with ruff-format. Deterministic, fully reversible.
+    status: ACTIVE
+
+  workflow.ruff_format_check:
+    action: fix.format
+    confidence: 0.92
+    risk: low
+    description: >
+      File would be reformatted by ruff format. Deterministic, fully reversible.
+      Same handler as style.formatter_required — two rule IDs, one action.
+    status: ACTIVE
+
+  purity.docstrings.required:
+    action: fix.docstrings
+    confidence: 0.90
+    risk: low
+    description: >
+      Add missing docstrings to public functions and classes.
+    status: ACTIVE
+
+  atomic_actions.must_return_action_result:
+    action: fix.atomic_actions
+    confidence: 0.90
+    risk: low
+    description: >
+      Atomic actions missing ActionResult return type are fixed.
+    status: ACTIVE
+
+  # ===========================================================================
+  # TIER 2: ACTIVE — high risk (confidence >= 0.85)
+  # LLM-assisted structural changes. Logic Conservation Gate required.
+  # Proposals created automatically. Human approval required before execution.
+  # ===========================================================================
+
+  modularity.needs_split:
+    action: fix.modularity
+    confidence: 0.85
+    risk: high
+    description: >
+      Files exceeding line limit with single coherent responsibility are split
+      using two-phase LLM analysis. Phase 1 (Architect, modularity_analyze) finds
+      the seam. Phase 2 (Architect, modularity_split) executes. Logic Conservation
+      Gate validates before any write. Defers automatically on low/medium confidence.
+    status: ACTIVE
+
+  ai.cognitive_role.no_hardcoded_string:
+    action: remediate.cognitive_role
+    confidence: 0.85
+    risk: high
+    description: >
+      Hardcoded cognitive role string replaced with a governed constant from
+      the cognitive_roles registry. LLM-assisted rewrite via CoderAgent.
+      Human approval required before execution. See #133.
+    status: ACTIVE
+
+  # ===========================================================================
+  # TIER 2b: ACTIVE — flow-based (confidence >= 0.85)
+  # Dispatched via FlowExecutor. Proposals require human approval before
+  # execution (compute_risk() classifies flows as "moderate" universally).
+  # ===========================================================================
+
+  test.missing:
+    flow: flow.build_tests
+    confidence: 0.85
+    risk: high
+    description: >
+      Source file has no corresponding test file. Dispatches flow.build_tests
+      which runs: build.tests (CoderAgent generates test), then fix.imports,
+      fix.headers, fix.format as optional auto-heal steps. Human approval
+      required before execution.
+    status: ACTIVE
+
+  test.failure:
+    flow: flow.build_tests
+    confidence: 0.85
+    risk: high
+    description: >
+      Existing test file has failures. Dispatches flow.build_tests to regenerate
+      the test file, then apply fix.imports, fix.headers, fix.format as optional
+      auto-heal steps. Human approval required before execution.
+    status: ACTIVE
+
+  # ===========================================================================
+  # TIER 3a: DELEGATE — human routing required
+  # Non-automatable violations. ViolationRemediatorWorker routes these to the
+  # governor inbox as indeterminate findings. Confidence below MIN_CONFIDENCE
+  # (0.80) to prevent proposal dispatch. Included in active map so
+  # ViolationExecutorWorker cannot claim them as unmapped (ADR-029).
+  # ===========================================================================
+
+  modularity.class_too_large:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Class-level refactors require human architectural decision —
+      non-automatable per ADR-007. Routed to governor inbox as DELEGATE.
+      Explicitly mapped to prevent ViolationExecutorWorker from claiming
+      these findings as unmapped. Human review required before any action.
+    status: DELEGATE
+
+  architecture.channels.logger_not_presentation:
+    action: fix.logging
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Logger used for presentation output — Rich objects or strings
+      containing Rich markup passed to logger.* calls. Correct
+      remediation is the inverse direction of fix.logging: convert
+      logger.* back to console.print where the content carries Rich
+      content. No automatable fixer exists; manual migration is the
+      only safe path (precedent: #371's 8-batch hand migration of 113
+      sites across src/cli/). Routed to governor inbox as DELEGATE.
+      Confidence below MIN_CONFIDENCE (0.80) prevents dispatch.
+      Explicitly mapped — not unmapped — to halt the abandoned-finding
+      re-emission loop that previously occurred when the rule had no
+      entry at all (peak: 1,558 abandoned findings in 48h from two
+      files before #343/#344 deletion).
+    status: DELEGATE
+
+  architecture.api.must_route_through_will:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  architecture.api.no_body_bypass:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  architecture.api.no_direct_database_access:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  architecture.body.no_rule_evaluation:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  architecture.channels.cli_rendering_allowed:
+    action: fix.logging
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Channel/presentation boundary. Manual migration required when
+      violated (precedent: #371 hand migration).
+    status: DELEGATE
+
+  architecture.intent.gateway_is_shared_infrastructure:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  architecture.intent.no_legacy_root_assumptions:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  architecture.namespace.no_direct_protected_access:
+    # Renamed from architecture.intent.non_gateway_no_direct_resolution
+    # under #490 (ADR-077 cleanup, 2026-06-01).
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  architecture.layer_exclusivity:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  architecture.layers.no_body_to_will:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  architecture.layers.no_mind_execution:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  architecture.mind.execution_signal:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  architecture.mind.no_database_access:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  architecture.mind.no_execution_semantics:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  architecture.mind.no_filesystem_writes:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  architecture.mind.no_will_invocation:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  architecture.shared.no_strategic_decisions:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  architecture.will.must_delegate_to_body:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  architecture.will.no_direct_database_access:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  architecture.will.no_filesystem_operations:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  autonomy.reasoning.policy_alignment:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  autonomy.tracing.mandatory:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  cli.command.behavior_classification:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  cli.command.canonical_naming:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  cli.command.dangerous_marking:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  cli.command.layer_assignment:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  cli.command.metadata_required:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  cli.help_required:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  cli.standard_verbs:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  data.integrity.vector_sync:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      sync.vectors_code has plausible semantic but no remediates=
+      declaration and cardinality mismatch (per-symbol findings vs
+      whole-repo crawl). Validate wiring in a separate issue before
+      promoting to ACTIVE. Until then, DELEGATE.
+    status: DELEGATE
+
+  governance.artifact_mutation.traceable:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  governance.dangerous_execution_primitives:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  infrastructure.constitutional_documentation:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  infrastructure.no_business_logic:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  infrastructure.no_strategic_decisions:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  infrastructure.service_registry.no_conditional_loading:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  purity.logic_conservation:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  purity.no_ast_duplication:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  purity.no_dead_code:
+    action: fix.vulture_heal
+    confidence: 0.40
+    risk: high
+    description: >
+      fix.vulture_heal exists but filters by
+      check_id='workflow.dead_code_check' (a non-existent rule), not
+      purity.no_dead_code. Wiring would be a no-op. Separate hygiene
+      issue: fix the action's remediates= declaration. Until then,
+      DELEGATE.
+    status: DELEGATE
+
+  purity.no_orphan_files:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  purity.no_semantic_duplication:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Structural/boundary rule with no automatable fixer. Human review
+      required.
+    status: DELEGATE
+
+  governance.remediation.all_rules_mapped:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Meta-governance: an active reporting rule has no
+      auto_remediation.yaml entry — the invariant established by
+      ADR-066 is violated. Resolution: add a DELEGATE or PENDING entry
+      for the unmapped rule. Non-automatable; requires governor review
+      of the rule registry.
+    status: DELEGATE
+
+  governance.namespace.classification_complete:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      A file under .intent/ or .specs/ has no entry in
+      .intent/governance/namespace_manifest.yaml — the
+      framework/project classification invariant established by
+      ADR-075 D7 is violated. Classification is a property of an
+      artifact's purpose, not its file type (D5), so the manifest
+      entry is the governor-authored constitutional record; no
+      heuristic can substitute. Resolution: governor reviews the
+      unclassified file and adds a manifest entry with
+      governance_namespace = framework or project::<name>.
+      Non-automatable per D5; routed to governor inbox as DELEGATE.
+      Explicitly mapped to satisfy the ADR-066 unmapped-rules
+      invariant.
+    status: DELEGATE
+
+  governance.fs_operations.completeness:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      The filesystem-operation taxonomy at
+      .intent/taxonomies/filesystem_operations.yaml is out of
+      sync with the runtime FS surface — either a pathlib.Path
+      public method exists in the interpreter but is not
+      classified, a curated `watched` entry no longer resolves to
+      a callable in its module (stdlib rename/removal or
+      third-party absence), or the declared python_version no
+      longer matches runtime sys.version_info major.minor (ADR-077
+      §3 + §5). Resolution: governor reviews the surfaced gap and
+      either classifies the new call (read / traverse / parse /
+      write / neutral per fs_audit_op_class.enum), removes the
+      stale watched entry, or refreshes the python_version
+      after re-verifying classifications against the new
+      interpreter. Classification is a governance decision
+      (the same name can be read or write depending on call
+      semantics); no heuristic can substitute. Non-automatable
+      per ADR-077 §3; routed to governor inbox as DELEGATE.
+      Explicitly mapped to satisfy the ADR-066 unmapped-rules
+      invariant.
+    status: DELEGATE
+
+  governance.quarantine.namespace_has_drainer:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      Meta-governance: a subject namespace has rows in awaiting_reaudit
+      but no drainer is registered in
+      .intent/enforcement/quarantine/drainer_registry.yaml — the
+      invariant established by ADR-072 is violated. Resolution: either
+      implement a drainer worker for the namespace (mirroring
+      AuditViolationSensor's release-pass and TestRunnerSensor's D5
+      wiring) and register it, or determine that emission into the
+      namespace should be removed. Non-automatable; requires governor
+      architectural decision.
+    status: DELEGATE
+
+  coherence.violation_executor.blast_bound:
+    action: fix.modularity
+    confidence: 0.40
+    risk: moderate
+    description: >
+      2026-05-24 hardening sweep Session 2 / blast-bound principle.
+      ViolationExecutorWorker reached its per-cycle files-rewritten cap
+      (declared in .intent/workers/violation_executor.yaml
+      mandate.schedule.files_per_cycle_max). The excess findings have
+      been released back to `open` for the next cycle — work is paced,
+      not lost. The OPEN finding under this rule is the audit-trail
+      record that the rate limit fired; no autonomous proposal is
+      dispatched. Operator action: amend the cap if too low,
+      investigate upstream cause if sensor is over-emitting, or accept
+      the pacing as intended. Cognate with coherence.repo_artifacts.drift
+      (ADR-070 D8 writer-as-sensor OPEN-finding pattern).
+    status: DELEGATE
+
+  coherence.repo_artifacts.drift:
+    action: fix.modularity
+    confidence: 0.40
+    risk: moderate
+    description: >
+      ADR-070 D8 writer-as-sensor: orphan rows in core.repo_artifacts
+      (rows whose file_path no longer exists on disk) are detected
+      every RepoCrawlerWorker cycle. Two emission paths share this
+      rule; the finding's `status` and `payload.drift_class`
+      discriminate. (1) `status=resolved` / `drift_class=reaped_inline`:
+      the drift was within the safety bounds and reaped INLINE in the
+      same cycle (ADR-070 D4 writer-as-sensor + inline remediation);
+      finding is audit-trail attribution only. (2) `status=open` /
+      `drift_class=excessive_or_partial_walk`: a safety guard tripped
+      (proposed reap above hard/fraction cap, or walker enumerated
+      suspiciously few files); the reap was SKIPPED pending governor
+      inspection of `payload.sample_paths`. Either way no proposal is
+      dispatched — the writer is constitutionally permitted to mutate
+      the projection but only under bounded conditions, and the OPEN
+      case explicitly routes to governor decision rather than
+      autonomous action. This DELEGATE entry satisfies the ADR-066
+      invariant that every active rule must have a remediation map
+      entry.
+    status: DELEGATE
+
+  # ===========================================================================
+  # TIER 3b: PENDING — action implementation required
+  # Documented for roadmap visibility only. Will not be dispatched.
+  # Excluded from the active map at loader time (loader skips PENDING).
+  # ===========================================================================
+
+  modularity.needs_refactor:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      PENDING: Mixed-discipline files require human architectural decision
+      before any autonomous action. Blocking rule — human review required.
+    status: PENDING
+
+  architecture.path_access.no_hardcoded_runtime_dirs:
+    action: fix.path_resolver
+    confidence: 0.85
+    risk: high
+    description: >
+      Hardcoded runtime directory name in path construction. Route through
+      PathResolver or FileHandler. Deterministic AST rewrite — each site
+      replaces a string literal with a PathResolver property access. Human
+      approval required before execution. See ADR-031, #272.
+    status: ACTIVE
+
+  architecture.constitution_read_only:
+    action: fix.layer_violation
+    confidence: 0.40
+    risk: high
+    description: >
+      PENDING: Structural refactor requiring human review.
+    status: PENDING
+
+  code.imports.no_stale_namespace:
+    action: fix.imports
+    confidence: 0.55
+    risk: high
+    description: >
+      PENDING: Dangerous without full import graph resolver.
+    status: PENDING
+
+  architecture.mind.no_body_invocation:
+    action: fix.layer_violation
+    confidence: 0.40
+    risk: high
+    description: >
+      PENDING: Structural refactor requiring human review.
+    status: PENDING
+
+  governance.mutation_surface.filehandler_required:
+    action: fix.layer_violation
+    confidence: 0.40
+    risk: high
+    description: >
+      PENDING: AST rewrite requiring context on surrounding logic.
+    status: PENDING
+
+  # Sibling rule to governance.mutation_surface.filehandler_required.
+  # Both rules use the no_direct_writes check; under Phase 2 of the
+  # #489 phased re-plan, the check switches to taxonomy-driven derivation
+  # and both rules will surface the same finding set. Mapping added
+  # 2026-05-31 in Phase 1 (taxonomy-inert; this rule does not currently
+  # fire under the OLD check, so the mapping is dormant). Closes a
+  # pre-existing #418 invariant gap — the rule was emitting blocking
+  # findings on revival flows without a registered remediator.
+  governance.logic_mutation.governed:
+    action: fix.layer_violation
+    confidence: 0.40
+    risk: high
+    description: >
+      PENDING: AST rewrite requiring context on surrounding logic.
+      Same remediation as governance.mutation_surface.filehandler_required.
+    status: PENDING
+
+  data.contracts.action_definition_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.action_result_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.agent_decision_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.audit_finding_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.auto_fixable_pattern_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.blackboard_entry_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.check_result_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.constitutional_validation_result_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.constitutional_violation_payload_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.context_build_request_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.context_packet_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.detailed_plan_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.detailed_plan_step_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.drift_report_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.embedding_payload_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.execution_task_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.finding_nucleus_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.fix_result_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.flow_definition_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.flow_step_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.governance_decision_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.pattern_violation_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.phase_workflow_result_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.policy_evaluation_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.prompt_model_manifest_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.proposal_action_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.proposal_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.proposal_scope_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.refusal_result_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.remediation_result_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.repo_census_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.risk_assessment_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.task_structure_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.validation_result_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.vectorizable_item_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.violation_report_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.worker_declaration_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  data.contracts.workflow_result_conforms:
+    action: fix.contract_conformance
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Pydantic model conformance check under ADR-056 wave work. Fixer
+      to be built.
+    status: PENDING
+
+  infrastructure.no_bare_except:
+    action: fix.bare_except
+    confidence: 0.40
+    risk: low
+    description: >
+      Ruff BLE001 has the detection; deterministic except-clause fixer
+      to be built.
+    status: PENDING
+
+  modernization.legacy_signal:
+    action: fix.legacy_remove
+    confidence: 0.40
+    risk: moderate
+    description: >
+      Legacy-pattern flag. Removal/migration fixer to be built per
+      modernization roadmap.
+    status: PENDING
+
+  governance.taxonomy.operational_capabilities_decorator_backing:
+    action: fix.modularity
+    confidence: 0.40
+    risk: high
+    description: >
+      A capability id in .intent/taxonomies/operational_capabilities.yaml
+      has no matching @atomic_action decoration in src/ — a phantom that
+      cannot be authorized by the ADR-079 chokepoint. Resolution is a
+      governor decision: either strip the YAML entry (the capability does
+      not represent a real authority), or decorate the underlying function
+      with @atomic_action(action_id="<id>") and route its dispatch through
+      ActionExecutor.execute so the token is actually set. Per ADR-079 D9
+      Shape 1 (strip) and Shape 2 (re-route + register/decorate/**kwargs).
+      The autonomous remediator cannot pick between the two paths.
+    status: DELEGATE
+
+  purity.tempfile_default_dir:
+    action: fix.tempfile_dir
+    confidence: 0.60
+    risk: low
+    description: >
+      Mechanical AST rewrite: add `dir=str(<repo_root> / "var" / "tmp")`
+      kwarg to tempfile.{TemporaryDirectory,NamedTemporaryFile,mkdtemp,
+      mkstemp} calls; replace tempfile.gettempdir() with the same path.
+      The four real-world siblings closed by #508 were fixed directly
+      and no live findings are expected; this entry exists to satisfy
+      the #418 invariant (every active rule must have an entry) and
+      reserves the action name for if/when the class returns.
+    status: PENDING

@@ -1,0 +1,37 @@
+$schema: "META/worker.schema.json"
+kind: worker
+
+metadata:
+  id: workers.observer_worker
+  title: System Observer
+  version: "1.0.0"
+  authority: policy
+  status: active
+  rationale: >
+    Activated 2026-05-10. Daemon is running stably. Feeds core.system_health_log
+    which is consumed by the convergence trajectory metric (core-admin runtime dashboard,
+    #261). No LLM dependency — pure deterministic DB reads.
+
+identity:
+  uuid: "a7f3c2e1-b4d5-4e6f-8a9b-0c1d2e3f4a5b"
+  class: sensing
+
+mandate:
+  responsibility: >
+    Observe system state across all constitutional domains and post a
+    structured situation report to the Blackboard and system_health_log.
+  phase: audit
+  permitted_tools: []
+  scope:
+    domains:
+      - governance
+      - compliance
+  approval_required: false
+  schedule:
+    max_interval: 300
+    glide_off: 30
+
+implementation:
+  module: will.workers.observer_worker
+  class: ObserverWorker
+  requires_core_context: false

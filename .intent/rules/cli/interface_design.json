@@ -1,0 +1,70 @@
+{
+    "$schema": "META/rule_document.schema.json",
+    "kind": "rule_document",
+    "metadata": {
+        "id": "rules.cli.interface_design",
+        "title": "CLI Interface Design Enforcement",
+        "version": "2.1.0",
+        "authority": "constitution",
+        "phase": "load",
+        "status": "active"
+    },
+    "rules": [
+        {
+            "id": "cli.resource_first",
+            "statement": "CLI command paths MUST be depth 2 ('resource action') or depth 3 ('resource subresource action'), and MUST NOT exceed depth 3. Segment one is the resource; the final segment is the action.",
+            "enforcement": "blocking",
+            "authority": "constitution",
+            "phase": "load",
+            "rationale": "Resource-first design maps to user mental models and keeps architecture out of the UX. Depth is bounded at 3 so command nesting stays shallow and discoverable; going deeper is a deliberate constitutional change, not ad-hoc growth. The former 'admin'-only depth-3 carve-out is removed - depth 3 is now permitted generally for sub-resource grouping (e.g. 'coherence seed import'), of which 'admin' was only one instance."
+        },
+        {
+            "id": "cli.no_layer_exposure",
+            "statement": "Resource names MUST NOT be 'mind', 'body', 'will', 'manage', 'check', or 'fix' as these expose internal architecture.",
+            "enforcement": "blocking",
+            "authority": "constitution",
+            "phase": "load",
+            "rationale": "Internal architecture layers should not be visible in user-facing commands."
+        },
+        {
+            "id": "cli.standard_verbs",
+            "statement": "Action names SHOULD use standard verbs from the approved architectural vocabulary.",
+            "enforcement": "reporting",
+            "authority": "constitution",
+            "phase": "load",
+            "rationale": "Consistent vocabulary improves discoverability and reduces cognitive load."
+        },
+        {
+            "id": "cli.dangerous_explicit",
+            "statement": "Commands that mutate state MUST require --write flag or interactive confirmation.",
+            "enforcement": "blocking",
+            "authority": "constitution",
+            "phase": "runtime",
+            "rationale": "Prevents accidental data loss and provides audit trail for mutations."
+        },
+        {
+            "id": "cli.async_execution",
+            "statement": "All async commands MUST be wrapped with @core_command decorator to handle event loop execution.",
+            "enforcement": "blocking",
+            "authority": "code",
+            "phase": "execution",
+            "rationale": "Ensures proper async/await handling and prevents RuntimeWarning errors."
+        },
+        {
+            "id": "cli.discovery_strict",
+            "statement": "CLI command and resource modules MUST resolve at process start using static imports; import failures MUST be fatal (no error-swallowing around CLI module imports, no deferred or lazy loading that masks load errors).",
+            "enforcement": "blocking",
+            "authority": "code",
+            "phase": "load",
+            "rationale": "A fail-fast import surface guarantees every registered command is functional at startup. Enforced structurally by the absence of error-swallowing around the CLI loader, not by a discovery loader. Restated per ADR-076 D6: the prior statement described a CORE_DEV_MODE discovery loader that was never implemented anywhere in the codebase; the rule now matches the observed, enforceable mechanism."
+        },
+        {
+            "id": "cli.help_required",
+            "statement": "Every command MUST provide help text and usage examples.",
+            "enforcement": "reporting",
+            "authority": "policy",
+            "phase": "audit",
+            "rationale": "Self-documenting CLI improves usability and reduces support burden."
+        }
+    ]
+}

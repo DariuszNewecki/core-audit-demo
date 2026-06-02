@@ -1,0 +1,41 @@
+# .intent/enforcement/mappings/architecture/core_safety.yaml
+#
+# Core architectural safety checks enforced via deterministic gates.
+# These are the structural perimeter rules — they verify the shape of
+# the codebase before any semantic analysis begins.
+
+mappings:
+  # =========================================================================
+  # STRUCTURAL: Module-level async engine prohibition
+  # =========================================================================
+  architecture.no_module_async_engine:
+    engine: ast_gate
+    params:
+      check_type: no_module_level_async_engine
+    scope:
+      applies_to:
+        - "src/**/*.py"
+
+  # =========================================================================
+  # IMMUTABILITY: Constitution is read-only to code
+  # =========================================================================
+  architecture.constitution_read_only:
+    engine: glob_gate
+    params:
+      patterns_prohibited:
+        - ".intent/constitution/**"
+    scope:
+      applies_to:
+        - "src/**/*.py"
+
+  # =========================================================================
+  # IMMUTABILITY: META schema is read-only to code
+  # =========================================================================
+  architecture.meta_read_only:
+    engine: glob_gate
+    params:
+      patterns_prohibited:
+        - ".intent/META/**"
+    scope:
+      applies_to:
+        - "src/**/*.py"

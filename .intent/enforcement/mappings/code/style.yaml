@@ -1,0 +1,29 @@
+# .intent/enforcement/mappings/code/style.yaml
+#
+# Enforces code style rules: import order and formatting.
+
+mappings:
+  style.import_order:
+    engine: ast_gate
+    params:
+      check_type: import_order
+      internal_roots:
+        ["api", "body", "cli", "features", "mind", "services", "shared", "will"]
+    scope:
+      applies_to:
+        - "src/**/*.py"
+      excludes:
+        - "tests/**/*.py"
+        - "scripts/**/*.py"
+
+  style.formatter_required:
+    engine: workflow_gate
+    params:
+      check_type: ruff_format_check
+      exclude: "^(scripts|dev-scripts)/"
+    scope:
+      applies_to:
+        - "src/**/*.py"
+      excludes:
+        - "scripts/**"
+        - "dev-scripts/**"
