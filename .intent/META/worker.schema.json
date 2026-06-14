@@ -147,7 +147,18 @@
                             "type": "string",
                             "minLength": 1,
                             "maxLength": 128,
-                            "description": "Rule ID namespace prefix this worker is scoped to (e.g. 'purity', 'logic', 'architecture.channels'). The daemon passes this as rule_namespace to the worker constructor. Rule IDs are resolved dynamically from IntentRepository at runtime — all rules whose ID starts with this prefix are in scope."
+                            "description": "Per ADR-091 D1 (widened semantics). Audit topic this worker emits findings under — formerly 'rule ID prefix'. Where the topic matches a declared rule namespace (the AuditViolationSensor case), rule resolution proceeds: all rules whose ID starts with this prefix are in scope, resolved dynamically from IntentRepository at runtime. Where the topic does not match any rule prefix (e.g. test.coverage, coherence.incoherence), resolution returns an empty set and the sensor's run() does not iterate over rules — but the topic still anchors the canonical subject format declared in ADR-091 D2."
+                        },
+                        "artifact_type": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "minLength": 2,
+                                "maxLength": 64,
+                                "pattern": "^[a-z][a-z0-9_]*$"
+                            },
+                            "minItems": 1,
+                            "description": "Per ADR-091 D1. Array of registered artifact_type ids from .intent/artifact_types/ that this sensor observes. Single-element arrays are the common case; multi-element arrays declare joint observation (e.g. [python, test] for sensors that cross-reference instances of multiple types). Cross-validation invariant (ADR-091 D4): every element must appear in that artifact_type's supported_sensors array. The conditional `if class == sensing then required` lands in the top-level allOf block (active after #570 closed 2026-06-05)."
                         },
                         "notes": {
                             "type": "string",
@@ -170,12 +181,12 @@
                         "max_interval": {
                             "type": "integer",
                             "minimum": 10,
-                            "description": "Maximum seconds between heartbeats. Constitutional commitment — the worker must post a heartbeat at least once per this interval."
+                            "description": "Cycle cap — maximum seconds between consecutive cycle starts (and equivalently between heartbeats, since each cycle begins with a heartbeat). Per ADR-103: the runtime enforces this via `sleep(max(max_interval - elapsed, 0))`, so next cycle starts at `max(elapsed, max_interval)`. The operator declares the cadence; the runtime adapts sleep to honor it. When observed cycle exceeds this cap (× 1.1 jitter tolerance), `runtime.worker_max_interval_within_observed` fires — meaning real work has grown past the cap, not that the rule is too tight."
                         },
                         "glide_off": {
                             "type": "integer",
                             "minimum": 0,
-                            "description": "Grace period in seconds added to max_interval before the Orchestrator raises a violation. Defaults to 10% of max_interval if absent. Absorbs timing jitter without masking real silence."
+                            "description": "Jitter tolerance in seconds added to max_interval before the liveness check raises worker.silent. Defaults to 10% of max_interval if absent. Per ADR-103 D2: this is measurement-jitter accommodation (scheduler delays, DB write latency), not a separate tolerance budget operators may spend. The rule's × 1.1 multiplier serves the same purpose at the 24h-aggregation cadence."
                         },
                         "batch_size": {
                             "type": "integer",
@@ -245,5 +256,39 @@
                 ]
             }
         }
-    }
+    },
+    "allOf": [
+        {
+            "description": "ADR-091 D1 conditional enforcement (active after #570 closed 2026-06-05): sensing-class workers MUST declare mandate.scope.artifact_type and mandate.scope.rule_namespace. The conditional was staged at Phase 1 to keep the daemon loadable while embedders/crawlers/transformers carrying class:sensing were reclassified out. With #570 closed, every class:sensing worker is a true artifact observer and the requirement lands.",
+            "if": {
+                "type": "object",
+                "properties": {
+                    "identity": {
+                        "type": "object",
+                        "properties": {
+                            "class": {"const": "sensing"}
+                        },
+                        "required": ["class"]
+                    }
+                },
+                "required": ["identity"]
+            },
+            "then": {
+                "type": "object",
+                "properties": {
+                    "mandate": {
+                        "type": "object",
+                        "properties": {
+                            "scope": {
+                                "type": "object",
+                                "required": ["artifact_type", "rule_namespace"]
+                            }
+                        },
+                        "required": ["scope"]
+                    }
+                },
+                "required": ["mandate"]
+            }
+        }
+    ]
 }

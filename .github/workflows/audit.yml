@@ -1,32 +1,16 @@
-# Constitutional Audit — runs the CORE audit gate against this repo on
-# every push and PR. The action is the F-10.3 deliverable; its image
-# is built per-run from the CORE repository's Dockerfile.
-#
-# `severity: block` surfaces only the most severe violations as
-# merge-blockers. Lower severities (`high`, `medium`, `low`, `info`)
-# still appear as PR annotations but don't fail the workflow.
-
 name: Constitutional Audit
 
-on:
-  push:
-    branches: [main]
-  pull_request:
+# Runs the CORE Constitutional Audit on every push and pull request.
+# Findings annotate the offending lines in the PR diff; with `severity: block`
+# any blocking finding fails the job, which can gate merge via branch protection.
 
-permissions:
-  contents: read
-  pull-requests: write
+on: [push, pull_request]
 
 jobs:
   audit:
-    name: Run CORE audit
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Constitutional Audit
-        uses: DariuszNewecki/CORE@v2.6.0
+      - uses: actions/checkout@v4
+      - uses: DariuszNewecki/CORE@main
         with:
           severity: block
-          format: github-annotations
