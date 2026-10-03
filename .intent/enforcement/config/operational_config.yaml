@@ -73,6 +73,7 @@ workers:
     # Older executing rows are posted as
     # proposal.stuck_executing::{proposal_id}.
     stuck_executing_sla_sec: 900
+    stuck_finalizing_sla_sec: 300
     # Repeated-failure detection: a (first action_id, source_check_id)
     # pair failing this many times within the lookback window posts
     # proposal.repeated_failure::{action_id}::{rule_id}.
@@ -292,6 +293,15 @@ analyzers:
   max_file_lines: 400
   max_function_lines: 50
   max_module_lines: 400
+
+# ---------------------------------------------------------------------------
+# Modularity — fix.modularity confidence gate (relocated from governance_paths.yaml)
+# ---------------------------------------------------------------------------
+modularity:
+  # Minimum SplitPlan confidence before fix.modularity splits a file. The LLM
+  # returns a confidence (0.0-1.0); plans below this are rejected with
+  # ok=False / reason="low_confidence" for human review. Range: 0.0-1.0.
+  split_confidence_threshold: 0.75
 
 # ---------------------------------------------------------------------------
 # Refactor recommendations

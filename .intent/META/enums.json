@@ -77,12 +77,20 @@
       ]
     },
     "worker_status": {
-      "description": "Operational status of a Worker declaration. active means the daemon loads and runs it. paused means the daemon skips it without retiring it. deprecated means it is retained for reference only and will not be loaded.",
+      "description": "Constitutional availability of a Worker declaration. active means the worker is constitutionally available for legitimate invocation; how it is activated is declared separately by implementation.launch (see worker_launch) and is daemon-hosted only by default. paused means it is not available: the daemon skips it without retiring it. deprecated means it is retained for reference only and will not be loaded.",
       "type": "string",
       "enum": [
         "active",
         "paused",
         "deprecated"
+      ]
+    },
+    "worker_launch": {
+      "description": "Activation mode of an active Worker declaration, declared at implementation.launch in META/worker.schema.json. daemon: the CORE daemon discovers, instantiates and hosts the worker, and continuous liveness (heartbeat within its schedule threshold or the operational fallback) is expected while the daemon runs. on_demand: a legitimate caller constructs one instance per invocation and drives it through the ordinary Worker.start() lifecycle (registration, liveness lease, Blackboard evidence); daemon discovery MUST NOT import, instantiate, schedule or report it as an error, and no heartbeat is expected between invocations. Absence of implementation.launch means daemon (backward compatibility). Issue #898.",
+      "type": "string",
+      "enum": [
+        "daemon",
+        "on_demand"
       ]
     },
     "blackboard_entry_status": {
@@ -109,26 +117,26 @@
       ]
     },
     "proposal_status": {
-      "description": "Canonical lifecycle states for Proposals. draft, pending, approved, and executing are active \u2014 deduplication must treat these as blocking a re-creation of the same action group. completed, failed, and rejected are terminal. rejected is the governor-veto outcome: the proposal completed its review path but was explicitly not approved (distinct from failed, which is execution failure of an approved proposal).",
+      "description": "Canonical lifecycle states for Proposals. pending, approved, executing, and finalizing are active \u2014 deduplication must treat these as blocking a re-creation of the same action group. completed, failed, and rejected are terminal. finalizing is the post-commit state (ADR-148): the proposal's changes are committed to git and its consequence chain is being recorded; it becomes completed only once that record is durable, and a stuck finalizing proposal is recovered by rolling forward (re-driving the idempotent evidence steps), never by rollback. rejected is the governor-veto outcome: the proposal completed its review path but was explicitly not approved (distinct from failed, which is execution failure of an approved proposal).",
       "type": "string",
       "enum": [
-        "draft",
         "pending",
         "approved",
         "executing",
+        "finalizing",
         "completed",
         "failed",
         "rejected"
       ]
     },
     "proposal_status_active": {
-      "description": "The subset of proposal_status values that are active. RemediatorWorker MUST check for proposals in these states before creating a new one for the same action group.",
+      "description": "The subset of proposal_status values that are active. RemediatorWorker MUST check for proposals in these states before creating a new one for the same action group. finalizing is active: a proposal whose changes are committed but whose consequence chain is still being recorded must still block re-creation of the same action group (ADR-148).",
       "type": "string",
       "enum": [
-        "draft",
         "pending",
         "approved",
-        "executing"
+        "executing",
+        "finalizing"
       ]
     },
     "proposal_risk": {
@@ -158,7 +166,7 @@
       ]
     },
     "finding_resolution_mechanism": {
-      "description": "Closing-authority classification for entry_type='finding' rows on core.blackboard_entries. Declared at write time; non-omittable for findings, forbidden for non-findings (enforced by blackboard_entry_resolution_mechanism_closed_set CHECK). Gates ADR-045 awaiting_reaudit eligibility per the ADR-091 D2 invariant: a finding may be transitioned to awaiting_reaudit if and only if its resolution_mechanism = 'reaudit'. (1) reaudit \u2014 closing authority is the owning audit/sensor worker re-evaluating the subject's truth claim against a re-readable artifact; eligible for ADR-045's parked-revival queue. Carriers today: every caller of post_artifact_finding (audit.violation, test.run_required, prompt.artifact). (2) self_resolve \u2014 closing authority is the posting supervisor worker (or a service it explicitly delegates to) on a later cycle when live state recovers; NOT eligible for awaiting_reaudit. Requires a documented resolver path on the emitting worker per the resolver-ownership invariant (Revision B (d)). Carriers today: worker.silent (worker_shop_manager in-Python resolve_entries), blackboard.entry_stale (blackboard_shop_manager \u2192 SQL resolve_stale_alerts_for_terminal_targets), proposal.{stuck_approved, stuck_executing, repeated_failure} (proposal_pipeline_shop_manager in-Python resolve_entries). (3) human \u2014 closing authority is a human operator only, via core-admin blackboard resolve; NOT eligible for awaiting_reaudit. Conservative default for findings with no automated closer and for unclassified legacy rows during backfill. Orthogonal to the abandoned/suppressed re-emission axis (blackboard_entry_status) which governs what a sensor does after a terminal state; resolution_mechanism governs who may close an open finding. Authority: ADR-091 D2 Revision B (2026-06-05).",
+      "description": "Closing-authority classification for entry_type='finding' rows on core.blackboard_entries. Declared at write time; non-omittable for findings, forbidden for non-findings (enforced by blackboard_entry_resolution_mechanism_closed_set CHECK). Gates ADR-045 awaiting_reaudit eligibility per the ADR-091 D2 invariant: a finding may be transitioned to awaiting_reaudit if and only if its resolution_mechanism = 'reaudit'. (1) reaudit \u2014 closing authority is the owning audit/sensor worker re-evaluating the subject's truth claim against a re-readable artifact; eligible for ADR-045's parked-revival queue. Carriers today: every caller of post_artifact_finding (audit.violation, test.run_required, prompt.artifact). (2) self_resolve \u2014 closing authority is the posting supervisor worker (or a service it explicitly delegates to) on a later cycle when live state recovers; NOT eligible for awaiting_reaudit. Requires a documented resolver path on the emitting worker per the resolver-ownership invariant (Revision B (d)). Carriers today: worker.silent (worker_shop_manager in-Python resolve_entries), blackboard.entry_stale (blackboard_shop_manager \u2192 SQL resolve_stale_alerts_for_terminal_targets), proposal.{stuck_approved, stuck_executing, stuck_finalizing, repeated_failure} (proposal_pipeline_shop_manager in-Python resolve_entries). (3) human \u2014 closing authority is a human operator only, via core-admin blackboard resolve; NOT eligible for awaiting_reaudit. Conservative default for findings with no automated closer and for unclassified legacy rows during backfill. Orthogonal to the abandoned/suppressed re-emission axis (blackboard_entry_status) which governs what a sensor does after a terminal state; resolution_mechanism governs who may close an open finding. Authority: ADR-091 D2 Revision B (2026-06-05).",
       "type": "string",
       "enum": [
         "reaudit",
