@@ -43,16 +43,6 @@ capabilities:
       modify: []
       delete: []
 
-  admin.meta:
-    description: Constitutional file index — lists indexed .intent/ files for operator inspection. Read-only.
-    risk: safe
-    fs_profile:
-      read:
-        - {path_pattern: ".intent/**", modes: [dev, live]}
-      create: []
-      modify: []
-      delete: []
-
   build.tests:
     description: Generates a pytest test file for a source file via CoderAgent; path mapping governed by .intent/enforcement/config/test_coverage.yaml.
     risk: safe
@@ -293,15 +283,6 @@ capabilities:
   logging.reconfigure:
     description: Runtime logging-config reload; in-process state change, no FS or DB writes.
     risk: safe
-    fs_profile:
-      read: []
-      create: []
-      modify: []
-      delete: []
-
-  manage.define_symbols:
-    description: DB-only symbol-to-capability-key assignment; writes core.symbols capability fields.
-    risk: moderate
     fs_profile:
       read: []
       create: []
